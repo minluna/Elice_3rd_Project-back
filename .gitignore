@@ -1,5 +1,8 @@
 # dependencies
 node_modules
+orm.config.ts
+.env
+dist
 
 # misc
 .DS_Store

@@ -1,34 +1,103 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+
 import { UserService } from './user.service';
+
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { LoginUserDto } from './dto/login-user.dto';
+import { ParamUserDto } from './dto/param-user.dto';
+
+import { UserId } from '../decorators/user-id.decorator';
+
+import { JwtAuthGuard } from '../auth/jwt/jwt.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
+  @Post('register')
+  async create(@Body() createUserDto: CreateUserDto) {
+    await this.userService.create(createUserDto);
+    return Object.assign({
+      statusCode: 200,
+      statusMsg: `회원가입이 성공적으로 완료되었습니다.`,
+    });
   }
 
-  @Get()
-  findAll() {
-    return this.userService.findAll();
+  @Post('login')
+  async login(@Body() { email, password }: LoginUserDto) {
+    const loginUser = await this.userService.login(email, password);
+    return Object.assign({
+      data: { userId: loginUser.userId, token: loginUser.token },
+      statusCode: 200,
+      statusMsg: `로그인이 성공적으로 완료되었습니다.`,
+    });
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
+  @UseGuards(JwtAuthGuard)
+  @Get('isLogin')
+  async isLogin(@UserId() userId: number) {
+    const checkUser = await this.userService.isLogin(userId);
+    return Object.assign({
+      data: checkUser,
+      statusCode: 200,
+      statusMsg: `정상적인 유저입니다.`,
+    });
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
+  @UseGuards(JwtAuthGuard)
+  @Get('userCount')
+  async findManyCount(@UserId() userId: number) {
+    const userCount = await this.userService.getAllCount(userId);
+    return Object.assign({
+      data: userCount,
+      statusCode: 200,
+      statusMsg: `전체 유저 수 불러오기가 성공적으로 완료되었습니다.`,
+    });
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  @UseGuards(JwtAuthGuard)
+  @Get('point')
+  async findPoint(@UserId() userId: number) {
+    const userPoint = await this.userService.getPoint(userId);
+    return Object.assign({
+      data: userPoint,
+      statusCode: 200,
+      statusMsg: `유저 포인트 내역 불러오기가 성공적으로 완료되었습니다.`,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':userId')
+  async findOne(@Param() params: ParamUserDto) {
+    const foundUser = await this.userService.findOne(params.userId);
+    return Object.assign({
+      data: foundUser,
+      statusCode: 200,
+      statusMsg: `유저 정보 불러오기가 성공적으로 완료되었습니다.`,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':userId')
+  @UseInterceptors(FileInterceptor('file'))
+  async update(@Param() params: ParamUserDto, @Body() updateUserDto: UpdateUserDto, @UploadedFile() file: Express.MulterS3.File) {
+    await this.userService.update(params.userId, updateUserDto, file);
+    return Object.assign({
+      data: { ...updateUserDto },
+      statusCode: 200,
+      statusMsg: `유저 정보 수정하기가 성공적으로 완료되었습니다.`,
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':userId')
+  async remove(@Param() params: ParamUserDto) {
+    await this.userService.remove(params.userId);
+    return Object.assign({
+      statusCode: 200,
+      statusMsg: `유저 정보 삭제하기가 성공적으로 완료되었습니다.`,
+    });
   }
 }

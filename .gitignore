@@ -3,6 +3,7 @@ node_modules
 orm.config.ts
 .env
 dist/
+.vscode/
 
 # misc
 .DS_Store

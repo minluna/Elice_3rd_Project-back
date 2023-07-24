@@ -79,7 +79,11 @@ export class UserService {
     if (!existUser) {
       throw new NotFoundException('요청한 사용자의 정보를 찾을 수 없습니다.');
     }
-    return existUser;
+    const existUserImage = await this.userImageRepository.findOne({
+      where: { userId },
+    });
+    // userImage가 없을 때 에러처리 넣을 것
+    return { userId: existUser.userId, email: existUser.email, nickname: existUser.nickname, userImage: existUserImage.imageUrl };
   }
 
   async getAllCount(userId: number) {
@@ -91,7 +95,7 @@ export class UserService {
     }
     const users = await this.userRepository.find({ where: { deleteAt: IsNull() } });
     const count = users.length;
-    return count;
+    return { userCount: count };
   }
 
   async getPoint(userId: number) {
@@ -101,10 +105,22 @@ export class UserService {
     if (!existUser) {
       throw new UnauthorizedException('잘못된 또는 만료된 토큰입니다.');
     }
+    const existUserImage = await this.userImageRepository.findOne({
+      where: { userId },
+    });
+    // userImage가 없을 때 에러처리 넣을 것
     const point = await this.pointRepository.findOne({
       where: { userId },
     });
-    return point;
+    // point가 없을 때 에러처리 넣을 것
+    console.log(existUser);
+    console.log(point);
+    return {
+      userId: existUser.userId,
+      nickname: existUser.nickname,
+      imageUrl: existUserImage.imageUrl,
+      accuPoint: point.accuPoint,
+    };
   }
 
   async findOne(userId: number) {
@@ -129,23 +145,44 @@ export class UserService {
       .andWhere('user.deleteAt is NULL')
       .getRawMany();
 
-    const subquery = this.pointRepository
-      .createQueryBuilder()
-      .subQuery()
-      .from('point', 'point')
-      .innerJoin('point.user', 'user', 'user.userId = point.userId')
-      .select(['ROW_NUMBER() OVER (ORDER BY accuPoint DESC) as AccuRanking', 'user.userId as userId'])
-      .where('user.deleteAt IS NULL')
-      .getQuery();
-
     const AccuRanking = await this.pointRepository
       .createQueryBuilder()
       .select('rankings.AccuRanking as AccuRanking')
-      .from(`(${subquery})`, 'rankings')
+      .from((subQuery) => {
+        return subQuery
+          .select(['ROW_NUMBER() OVER (ORDER BY accuPoint DESC) as AccuRanking', 'user.userId as userId'])
+          .from('point', 'point')
+          .innerJoin('point.user', 'user', 'user.userId = point.userId')
+          .where('user.deleteAt IS NULL');
+      }, 'rankings')
       .where('rankings.userId = :userId', { userId })
       .getRawOne();
 
-    // console.log(AccuRanking);
+    const TodayRanking = await this.pointRepository
+      .createQueryBuilder()
+      .select('rankings.TodayRanking as TodayRanking')
+      .from((subQuery) => {
+        return subQuery
+          .select([
+            'ROW_NUMBER() OVER (ORDER BY subquery.storyCount DESC, subquery.accuPoint DESC) as TodayRanking',
+            'subquery.userId as userId',
+          ])
+          .from((subQuery) => {
+            return subQuery
+              .select([
+                'user.userId as userId',
+                'point.accuPoint as accuPoint',
+                '(SELECT COUNT(userId) FROM post WHERE post.userId = user.userId and DATE_FORMAT(post.createAt, "%Y-%m-%d") = CURDATE()) as storyCount',
+              ])
+              .from('user', 'user')
+              .leftJoin('user.user_image', 'userImage', 'user.userId = userImage.userId')
+              .leftJoin('user.point', 'point', 'user.userId = point.userId')
+              .where('user.deleteAt is NULL');
+          }, 'subquery');
+      }, 'rankings')
+      .where('rankings.userId = :userId', { userId })
+      .getRawOne();
+
     return {
       userInfo: {
         userId: userInfo[0].userId,
@@ -157,7 +194,7 @@ export class UserService {
         storyCount: userInfo[0].storyCount,
         createAt: userInfo[0].createAt,
         AccuRanking: AccuRanking.AccuRanking,
-        // TodayRanking: ?.TodayRanking,
+        TodayRanking: TodayRanking.TodayRanking,
       },
     };
   }

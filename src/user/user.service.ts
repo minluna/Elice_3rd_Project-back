@@ -1,4 +1,11 @@
-import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 
@@ -40,13 +47,17 @@ export class UserService {
     const userImage = new UserImage();
     userImage.userId = createdUser.userId;
     userImage.imageUrl = imageUrl;
-    await this.userImageRepository.save(userImage);
+    const createUserImage = await this.userImageRepository.save(userImage);
 
     const point = new Point();
     point.userId = createdUser.userId;
     point.currentPoint = 0;
     point.accuPoint = 0;
-    await this.pointRepository.save(point);
+    const createUserPoint = await this.pointRepository.save(point);
+
+    if (!createdUser || !createUserImage || !createUserPoint) {
+      throw new BadRequestException('회원가입에 실패했습니다.');
+    }
   }
 
   // 로그인
@@ -82,11 +93,7 @@ export class UserService {
     if (!existUser) {
       throw new NotFoundException('요청한 사용자의 정보를 찾을 수 없습니다.');
     }
-    const existUserImage = await this.userImageRepository.findOne({
-      where: { userId },
-    });
-    // userImage가 없을 때 에러처리 넣을 것
-    return { userId: existUser.userId, email: existUser.email, nickname: existUser.nickname, userImage: existUserImage.imageUrl };
+    return { userId: existUser.userId, email: existUser.email, nickname: existUser.nickname };
   }
 
   // 전체 유저 수
@@ -113,13 +120,15 @@ export class UserService {
     const existUserImage = await this.userImageRepository.findOne({
       where: { userId },
     });
-    // userImage가 없을 때 에러처리 넣을 것
+    if (!existUserImage) {
+      throw new NotFoundException('요청한 사용자의 이미지를 찾을 수 없습니다.');
+    }
     const point = await this.pointRepository.findOne({
       where: { userId },
     });
-    // point가 없을 때 에러처리 넣을 것
-    console.log(existUser);
-    console.log(point);
+    if (!point) {
+      throw new NotFoundException('요청한 사용자의 포인트를 찾을 수 없습니다.');
+    }
     return {
       userId: existUser.userId,
       nickname: existUser.nickname,
@@ -150,6 +159,9 @@ export class UserService {
       .where('user.userId = :userId', { userId })
       .andWhere('user.deleteAt is NULL')
       .getRawMany();
+    if (!userInfo) {
+      throw new NotFoundException('유저의 정보를 찾을 수 없습니다.');
+    }
 
     const AccuRanking = await this.pointRepository
       .createQueryBuilder()
@@ -163,6 +175,9 @@ export class UserService {
       }, 'rankings')
       .where('rankings.userId = :userId', { userId })
       .getRawOne();
+    if (!AccuRanking) {
+      throw new NotFoundException('유저의 게시물 랭킹순위를 찾을 수 없습니다.');
+    }
 
     const TodayRanking = await this.pointRepository
       .createQueryBuilder()
@@ -188,6 +203,9 @@ export class UserService {
       }, 'rankings')
       .where('rankings.userId = :userId', { userId })
       .getRawOne();
+    if (!TodayRanking) {
+      throw new NotFoundException('유저의 오늘 랭킹순위를 찾을 수 없습니다.');
+    }
 
     return {
       userInfo: {
@@ -213,8 +231,11 @@ export class UserService {
     if (!existUser) {
       throw new NotFoundException('요청한 사용자의 정보를 찾을 수 없습니다.');
     }
-    await this.userRepository.update(userId, updateUserDto);
-    await this.userImageRepository.update({ userId: userId }, { imageUrl: file.location });
+    const updateUser = await this.userRepository.update(userId, updateUserDto);
+    const updateUserImage = await this.userImageRepository.update({ userId: userId }, { imageUrl: file.location });
+    if (updateUser.affected <= 0 || updateUserImage.affected <= 0) {
+      throw new InternalServerErrorException('유저 정보 수정하기에 실패했습니다.');
+    }
   }
 
   // 유저 정보 삭제
@@ -225,6 +246,9 @@ export class UserService {
     if (!existUser) {
       throw new NotFoundException('요청한 사용자의 정보를 찾을 수 없습니다.');
     }
-    await this.userRepository.softDelete(userId);
+    const deleteUser = await this.userRepository.softDelete(userId);
+    if (deleteUser.affected <= 0) {
+      throw new InternalServerErrorException('유저 정보 삭제하기가 실패했습니다.');
+    }
   }
 }

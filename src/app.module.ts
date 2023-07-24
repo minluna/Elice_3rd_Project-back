@@ -9,6 +9,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './auth/jwt/jwt.strategy';
 import { UserService } from './user/user.service';
+import { PostModule } from './post/post.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { UserService } from './user/user.service';
       signOptions: { expiresIn: '1y' },
     }),
     UserModule,
+    PostModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy, UserService],

@@ -270,10 +270,14 @@ export class UserService {
       if (!existUser) {
         throw new NotFoundException('요청한 사용자의 정보를 찾을 수 없습니다.');
       }
-      await this.userRepository.update(userId, updateUserDto);
+      const updatedUser = await this.userRepository.update(userId, updateUserDto);
+      if (updatedUser.affected === 0) {
+        // 조건에 맞는 데이터가 없어서 업데이트가 실패한 경우
+        throw new UnauthorizedException('유저 본인만 수정할 수 있습니다.');
+      }
       await this.userImageRepository.update({ userId: userId }, { imageUrl: file.location });
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('유저 정보 수정하기에 실패했습니다.');
@@ -290,9 +294,14 @@ export class UserService {
       if (!existUser) {
         throw new NotFoundException('요청한 사용자의 정보를 찾을 수 없습니다.');
       }
-      await this.userRepository.softDelete(userId);
+
+      const deletedUser = await this.userRepository.softDelete(userId);
+      if (deletedUser.affected === 0) {
+        // 조건에 맞는 데이터가 없어서 업데이트가 실패한 경우
+        throw new UnauthorizedException('유저 본인만 삭제할 수 있습니다.');
+      }
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('유저 정보 삭제하기에 실패했습니다.');

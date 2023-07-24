@@ -31,7 +31,8 @@ export class UserController {
   async login(@Body() { email, password }: LoginUserDto) {
     const loginUser = await this.userService.login(email, password);
     return Object.assign({
-      data: { userId: loginUser.userId, token: loginUser.token },
+      userId: loginUser.userId,
+      token: loginUser.token,
       statusCode: 200,
       statusMsg: `로그인이 성공적으로 완료되었습니다.`,
     });
@@ -43,7 +44,9 @@ export class UserController {
   async isLogin(@UserId() userId: number) {
     const checkUser = await this.userService.isLogin(userId);
     return Object.assign({
-      data: checkUser,
+      userId: checkUser.userId,
+      email: checkUser.email,
+      nickname: checkUser.nickname,
       statusCode: 200,
       statusMsg: `정상적인 유저입니다.`,
     });
@@ -55,7 +58,7 @@ export class UserController {
   async findManyCount(@UserId() userId: number) {
     const userCount = await this.userService.getAllCount(userId);
     return Object.assign({
-      data: userCount,
+      userCount: userCount.userCount,
       statusCode: 200,
       statusMsg: `전체 유저 수 불러오기가 성공적으로 완료되었습니다.`,
     });
@@ -67,7 +70,7 @@ export class UserController {
   async findPoint(@UserId() userId: number) {
     const userPoint = await this.userService.getPoint(userId);
     return Object.assign({
-      data: userPoint,
+      userPoint: userPoint.userPoint,
       statusCode: 200,
       statusMsg: `유저 포인트 내역 불러오기가 성공적으로 완료되었습니다.`,
     });
@@ -79,7 +82,7 @@ export class UserController {
   async findUser(@Param() params: ParamUserDto) {
     const foundUser = await this.userService.getUser(params.userId);
     return Object.assign({
-      data: foundUser,
+      userInfo: foundUser,
       statusCode: 200,
       statusMsg: `유저 정보 불러오기가 성공적으로 완료되었습니다.`,
     });

@@ -151,10 +151,12 @@ export class UserService {
         throw new NotFoundException('요청한 사용자의 포인트를 찾을 수 없습니다.');
       }
       return {
-        userId: existUser.userId,
-        nickname: existUser.nickname,
-        imageUrl: existUserImage.imageUrl,
-        accuPoint: point.accuPoint,
+        userPoint: {
+          userId: existUser.userId,
+          nickname: existUser.nickname,
+          imageUrl: existUserImage.imageUrl,
+          accuPoint: point.accuPoint,
+        },
       };
     } catch (error) {
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {

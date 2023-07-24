@@ -24,6 +24,7 @@ export class UserService {
     private readonly jwtService: JwtService,
   ) {}
 
+  // 회원가입
   async create(createUserDto: CreateUserDto) {
     const existUser = await this.userRepository.findOne({
       where: { email: createUserDto.email, deleteAt: IsNull() },
@@ -48,6 +49,7 @@ export class UserService {
     await this.pointRepository.save(point);
   }
 
+  // 로그인
   async login(email: string, password: string) {
     const existUser = await this.userRepository.findOne({
       where: { email: email, deleteAt: IsNull() },
@@ -72,6 +74,7 @@ export class UserService {
     return { userId: existUser.userId, token: token };
   }
 
+  // 로그인 검증
   async isLogin(userId: number) {
     const existUser = await this.userRepository.findOne({
       where: { userId, deleteAt: IsNull() },
@@ -86,6 +89,7 @@ export class UserService {
     return { userId: existUser.userId, email: existUser.email, nickname: existUser.nickname, userImage: existUserImage.imageUrl };
   }
 
+  // 전체 유저 수
   async getAllCount(userId: number) {
     const existUser = await this.userRepository.findOne({
       where: { userId, deleteAt: IsNull() },
@@ -98,6 +102,7 @@ export class UserService {
     return { userCount: count };
   }
 
+  // 유저의 누적 포인트
   async getPoint(userId: number) {
     const existUser = await this.userRepository.findOne({
       where: { userId, deleteAt: IsNull() },
@@ -123,7 +128,8 @@ export class UserService {
     };
   }
 
-  async findOne(userId: number) {
+  // 유저 정보 찾기
+  async getUser(userId: number) {
     const foundUser = await this.userRepository.findOne({ where: { userId, deleteAt: IsNull() } });
     if (!foundUser) throw new NotFoundException('요청한 사용자의 정보를 찾을 수 없습니다.');
 
@@ -199,7 +205,8 @@ export class UserService {
     };
   }
 
-  async update(userId: number, updateUserDto: UpdateUserDto, file: Express.MulterS3.File) {
+  // 유저 정보 수정
+  async setUser(userId: number, updateUserDto: UpdateUserDto, file: Express.MulterS3.File) {
     const existUser = await this.userRepository.findOne({
       where: { userId, deleteAt: IsNull() },
     });
@@ -210,7 +217,8 @@ export class UserService {
     await this.userImageRepository.update({ userId: userId }, { imageUrl: file.location });
   }
 
-  async remove(userId: number) {
+  // 유저 정보 삭제
+  async delUser(userId: number) {
     const existUser = await this.userRepository.findOne({
       where: { userId, deleteAt: IsNull() },
     });

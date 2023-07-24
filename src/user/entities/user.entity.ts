@@ -11,8 +11,8 @@ import {
 } from 'typeorm';
 import { Point } from './point.entity';
 import { UserImage } from './user-image.entity';
+import { Post } from 'src/post/entities/post.entity';
 // import { Comment } from './Comment';
-// import { Post } from './Post';
 // import { PostLike } from './PostLike';
 
 @Entity({ name: 'user' })
@@ -45,13 +45,13 @@ export class User {
   point: Point;
 
   @OneToOne(() => UserImage, (userImage) => userImage.user)
-  user_image: UserImage;
+  userImage: UserImage;
 
   // @OneToMany(() => Comment, (comment) => comment.userId)
   // comments: Comment[];
 
-  // @OneToMany(() => Post, (post) => post.userId)
-  // posts: Post[];
+  @OneToMany(() => Post, (post) => post.user)
+  post: Post;
 
   // @OneToMany(() => PostLike, (postLike) => postLike.userId)
   // postLikes: PostLike[];

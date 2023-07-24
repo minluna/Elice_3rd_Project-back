@@ -136,7 +136,7 @@ export class UserService {
     const userInfo = await this.userRepository
       .createQueryBuilder('user')
       .leftJoin('user.point', 'point', 'user.userId = point.userId')
-      .leftJoin('user.user_image', 'userImage', 'user.userId = userImage.userId')
+      .leftJoin('user.userImage', 'userImage', 'user.userId = userImage.userId')
       .select([
         'user.userId as userId',
         'user.email as email',
@@ -181,7 +181,7 @@ export class UserService {
                 '(SELECT COUNT(userId) FROM post WHERE post.userId = user.userId and DATE_FORMAT(post.createAt, "%Y-%m-%d") = CURDATE()) as storyCount',
               ])
               .from('user', 'user')
-              .leftJoin('user.user_image', 'userImage', 'user.userId = userImage.userId')
+              .leftJoin('user.userImage', 'userImage', 'user.userId = userImage.userId')
               .leftJoin('user.point', 'point', 'user.userId = point.userId')
               .where('user.deleteAt is NULL');
           }, 'subquery');

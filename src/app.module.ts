@@ -13,6 +13,7 @@ import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { LikeModule } from './like/like.module';
 import { RankModule } from './rank/rank.module';
+import { SearchModule } from './search/search.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { RankModule } from './rank/rank.module';
     CommentModule,
     LikeModule,
     RankModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy, UserService],

@@ -12,6 +12,7 @@ import { UserService } from './user/user.service';
 import { PostModule } from './post/post.module';
 import { CommentModule } from './comment/comment.module';
 import { LikeModule } from './like/like.module';
+import { RankModule } from './rank/rank.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { LikeModule } from './like/like.module';
     PostModule,
     CommentModule,
     LikeModule,
+    RankModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtStrategy, UserService],

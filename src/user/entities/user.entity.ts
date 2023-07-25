@@ -13,7 +13,7 @@ import { Point } from './point.entity';
 import { UserImage } from './user-image.entity';
 import { Post } from 'src/post/entities/post.entity';
 import { Comment } from 'src/comment/entities/comment.entity';
-// import { PostLike } from './PostLike';
+import { Like } from 'src/like/entities/like.entity';
 
 @Entity({ name: 'user' })
 export class User {
@@ -53,6 +53,6 @@ export class User {
   @OneToMany(() => Post, (post) => post.user)
   post: Post;
 
-  // @OneToMany(() => PostLike, (postLike) => postLike.userId)
-  // postLikes: PostLike[];
+  @OneToMany(() => Like, (like) => like.user)
+  Like: Like;
 }

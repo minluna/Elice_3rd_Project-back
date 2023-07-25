@@ -13,7 +13,7 @@ import {
 import { User } from 'src/user/entities/user.entity';
 import { PostImage } from './post-image.entity';
 import { Comment } from 'src/comment/entities/comment.entity';
-// import { PostLike } from './PostLike';
+import { Like } from 'src/like/entities/like.entity';
 
 @Index('idx_content', ['content'], { fulltext: true })
 @Index('userId', ['userId'], {})
@@ -57,6 +57,6 @@ export class Post {
   @OneToMany(() => PostImage, (postImage) => postImage.post)
   postImage: PostImage;
 
-  //   @OneToMany(() => PostLike, (postLike) => postLike.post)
-  //   postLikes: PostLike[];
+  @OneToMany(() => Like, (like) => like.post)
+  Like: Like;
 }

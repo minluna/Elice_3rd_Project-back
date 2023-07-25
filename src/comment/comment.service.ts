@@ -44,15 +44,16 @@ export class CommentService {
   }
 
   async getComment(userId: number, postId: number, cursor: number) {
-    const existUser = await this.userRepository.findOne({
-      where: { userId, deleteAt: IsNull() },
-    });
-    if (!existUser) {
-      throw new UnauthorizedException('잘못된 또는 만료된 토큰입니다.');
-    }
-
-    const checkPost = await this.postRepository.findOne({ where: { id: postId, deleteAt: IsNull() } });
     try {
+      const existUser = await this.userRepository.findOne({
+        where: { userId, deleteAt: IsNull() },
+      });
+      if (!existUser) {
+        throw new UnauthorizedException('잘못된 또는 만료된 토큰입니다.');
+      }
+
+      const checkPost = await this.postRepository.findOne({ where: { id: postId, deleteAt: IsNull() } });
+
       if (!checkPost) {
         throw new NotFoundException('요청한 게시물의 정보를 찾을 수 없습니다.');
       }

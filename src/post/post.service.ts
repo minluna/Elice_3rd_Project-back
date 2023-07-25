@@ -195,7 +195,6 @@ export class PostService {
         })
         .execute();
     } catch (error) {
-      console.log(error);
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {

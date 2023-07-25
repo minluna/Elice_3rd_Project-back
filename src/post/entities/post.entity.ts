@@ -12,8 +12,7 @@ import {
 } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { PostImage } from './post-image.entity';
-// import { Comment } from './Comment';
-// import { PostImage } from './PostImage';
+import { Comment } from 'src/comment/entities/comment.entity';
 // import { PostLike } from './PostLike';
 
 @Index('idx_content', ['content'], { fulltext: true })
@@ -45,8 +44,8 @@ export class Post {
   @DeleteDateColumn({ type: 'timestamp', name: 'deleteAt', nullable: true, comment: '게시물 삭제일자' })
   deleteAt: Date | null;
 
-  //   @OneToMany(() => Comment, (comment) => comment.post)
-  //   comments: Comment[];
+  @OneToMany(() => Comment, (comment) => comment.post)
+  comment: Comment;
 
   @ManyToOne(() => User, (user) => user.post, {
     onDelete: 'NO ACTION',

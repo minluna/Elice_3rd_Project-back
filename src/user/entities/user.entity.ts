@@ -12,7 +12,7 @@ import {
 import { Point } from './point.entity';
 import { UserImage } from './user-image.entity';
 import { Post } from 'src/post/entities/post.entity';
-// import { Comment } from './Comment';
+import { Comment } from 'src/comment/entities/comment.entity';
 // import { PostLike } from './PostLike';
 
 @Entity({ name: 'user' })
@@ -47,8 +47,8 @@ export class User {
   @OneToOne(() => UserImage, (userImage) => userImage.user)
   userImage: UserImage;
 
-  // @OneToMany(() => Comment, (comment) => comment.userId)
-  // comments: Comment[];
+  @OneToMany(() => Comment, (comment) => comment.user)
+  comment: Comment;
 
   @OneToMany(() => Post, (post) => post.user)
   post: Post;

@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { Connection, IsNull, Repository } from 'typeorm';
 
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
@@ -18,10 +18,15 @@ export class PostService {
     private postImageRepository: Repository<PostImage>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly connection: Connection,
   ) {}
 
   async getAllPost(userId: number, cursor: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -74,18 +79,29 @@ export class PostService {
           .limit(5)
           .getRawMany();
       }
+
+      await queryRunner.commitTransaction();
+
       return { posts: posts };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('게시물 전체 조회를 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async getCount(userId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -99,18 +115,28 @@ export class PostService {
         .where('DATE_FORMAT(post.createAt, "%Y-%m-%d") = CURDATE()')
         .getRawOne();
 
+      await queryRunner.commitTransaction();
+
       return { postCount: count.postCount, userCount: count.userCount };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('피드 수와 피드를 작성한 유저 수 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async getPostByUser(userId: number, postUserId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -127,18 +153,28 @@ export class PostService {
         .orderBy('post.createAt', 'DESC')
         .getRawMany();
 
+      await queryRunner.commitTransaction();
+
       return userPostList;
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('유저가 작성한 피드 정보 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async getUserLikePost(userId: number, likeUserId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -155,19 +191,28 @@ export class PostService {
         .orderBy('post.createAt', 'DESC')
         .getRawMany();
 
+      await queryRunner.commitTransaction();
+
       return userLikePostList;
     } catch (error) {
-      console.log(error);
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('유저가 좋아요한 피드 정보 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async postPost(userId: number, createPostDto: CreatePostDto, file: Express.MulterS3.File) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -194,17 +239,27 @@ export class PostService {
           userId,
         })
         .execute();
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('게시물 작성을 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async getPost(userId: number, postId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -236,18 +291,28 @@ export class PostService {
         .andWhere('post.id = :postId', { postId })
         .getRawOne();
 
+      await queryRunner.commitTransaction();
+
       return post;
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('게시물 상세 조회를 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async setPost(userId: number, postId: number, updatePostDto: UpdatePostDto, file: Express.MulterS3.File) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -266,17 +331,27 @@ export class PostService {
         throw new UnauthorizedException('게시물 작성자만 수정할 수 있습니다.');
       }
       await this.postImageRepository.update({ postId: postId }, { imageUrl: file.location });
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('게시물 수정을 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async delPost(userId: number, postId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -294,12 +369,18 @@ export class PostService {
         // 조건에 맞는 데이터가 없어서 업데이트가 실패한 경우
         throw new UnauthorizedException('게시물 작성자만 삭제할 수 있습니다.');
       }
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('게시물 삭제를 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 }

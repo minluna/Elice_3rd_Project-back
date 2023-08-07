@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { Connection, IsNull, Repository } from 'typeorm';
 
 import { Like } from './entities/like.entity';
 import { User } from 'src/user/entities/user.entity';
@@ -12,10 +12,15 @@ export class LikeService {
     private likeRepository: Repository<Like>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly connection: Connection,
   ) {}
 
   async postLike(userId: number, postId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -32,17 +37,27 @@ export class LikeService {
       like.userId = userId;
       like.postId = postId;
       await this.likeRepository.save(like);
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('좋아요 목록 생성에 실패하였습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async getLike(userId: number, postId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -57,18 +72,28 @@ export class LikeService {
         .where('postId = :postId', { postId })
         .getRawOne();
 
+      await queryRunner.commitTransaction();
+
       return { likeUser: likeUser, likeCount: likeCount.likeCount };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('좋아요 여부 확인 및 좋아요 누적수 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async delLike(userId: number, postId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -86,12 +111,18 @@ export class LikeService {
         // 조건에 맞는 데이터가 없어서 업데이트가 실패한 경우
         throw new UnauthorizedException('좋아요를 누른 유저만 삭제할 수 있습니다.');
       }
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('좋아요 목록 삭제에 실패하였습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 }

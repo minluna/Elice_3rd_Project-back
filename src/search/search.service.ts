@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { Connection, IsNull, Repository } from 'typeorm';
 
 import { User } from 'src/user/entities/user.entity';
 import { Post } from 'src/post/entities/post.entity';
@@ -12,10 +12,15 @@ export class SearchService {
     private userRepository: Repository<User>,
     @InjectRepository(Post)
     private postRepository: Repository<Post>,
+    private readonly connection: Connection,
   ) {}
 
   async getKeywordPost(userId: number, keyword: string, cursor: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -64,13 +69,20 @@ export class SearchService {
           .limit(5)
           .getRawMany();
       }
+
+      await queryRunner.commitTransaction();
+
       return { searchPost: searchPost };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('키워드를 포함한 게시물 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 }

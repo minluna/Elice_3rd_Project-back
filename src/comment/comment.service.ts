@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { Connection, IsNull, Repository } from 'typeorm';
 
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
@@ -17,10 +17,15 @@ export class CommentService {
     private userRepository: Repository<User>,
     @InjectRepository(Post)
     private postRepository: Repository<Post>,
+    private readonly connection: Connection,
   ) {}
 
   async postComment(userId: number, createCommentDto: CreateCommentDto) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -34,17 +39,27 @@ export class CommentService {
       comment.content = createCommentDto.content;
       comment.parentId = createCommentDto.parentId;
       await this.commentRepository.save(comment);
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('댓글 추가하기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async getComment(userId: number, postId: number, cursor: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -147,18 +162,29 @@ export class CommentService {
           .orderBy('comment.createAt', 'DESC')
           .getRawMany();
       }
+
+      await queryRunner.commitTransaction();
+
       return { CommentListZero, CommentListOther };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('게시글 총 댓글 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async setComment(userId: number, commentId: number, updateCommentDto: UpdateCommentDto) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -180,17 +206,27 @@ export class CommentService {
         // 조건에 맞는 데이터가 없어서 업데이트가 실패한 경우
         throw new UnauthorizedException('댓글 작성자만 수정할 수 있습니다.');
       }
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('댓글 수정하기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   async delComment(userId: number, commentId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -208,12 +244,18 @@ export class CommentService {
         // 조건에 맞는 데이터가 없어서 업데이트가 실패한 경우
         throw new UnauthorizedException('게시물 작성자만 삭제할 수 있습니다.');
       }
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('댓글 삭제하기를 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 }

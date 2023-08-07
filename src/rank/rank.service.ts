@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { Connection, IsNull, Repository } from 'typeorm';
 
 import { User } from 'src/user/entities/user.entity';
 
@@ -9,10 +9,15 @@ export class RankService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly connection: Connection,
   ) {}
 
   async getRankList(userId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -38,13 +43,19 @@ export class RankService {
         .limit(10)
         .getRawMany();
 
+      await queryRunner.commitTransaction();
+
       return { rankList };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('Top10 랭킹 리스트 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 }

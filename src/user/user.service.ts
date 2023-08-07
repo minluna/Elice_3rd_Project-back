@@ -7,7 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { Connection, IsNull, Repository } from 'typeorm';
 
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -29,11 +29,16 @@ export class UserService {
     @InjectRepository(Point)
     private pointRepository: Repository<Point>,
     private readonly jwtService: JwtService,
+    private readonly connection: Connection,
   ) {}
 
   // 회원가입
   async create(createUserDto: CreateUserDto) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { email: createUserDto.email, deleteAt: IsNull() },
       });
@@ -55,18 +60,28 @@ export class UserService {
       point.currentPoint = 0;
       point.accuPoint = 0;
       await this.pointRepository.save(point);
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof ConflictException) {
         throw error;
       } else {
         throw new BadRequestException('회원가입에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   // 로그인
   async login(email: string, password: string) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { email: email, deleteAt: IsNull() },
       });
@@ -87,13 +102,19 @@ export class UserService {
       };
       const token = this.jwtService.sign(payload);
 
+      await queryRunner.commitTransaction();
+
       return { userId: existUser.userId, token: token };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof NotFoundException) {
         throw error;
       } else {
         throw new UnauthorizedException('로그인에 실패하셨습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
@@ -110,7 +131,11 @@ export class UserService {
 
   // 전체 유저 수
   async getAllCount(userId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -119,19 +144,30 @@ export class UserService {
       }
       const users = await this.userRepository.find({ where: { deleteAt: IsNull() } });
       const count = users.length;
+
+      await queryRunner.commitTransaction();
+
       return { userCount: count };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException) {
         throw error;
       } else {
         throw new InternalServerErrorException('전체 유저 수 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   // 유저의 누적 포인트
   async getPoint(userId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -150,6 +186,9 @@ export class UserService {
       if (!point) {
         throw new NotFoundException('요청한 사용자의 포인트를 찾을 수 없습니다.');
       }
+
+      await queryRunner.commitTransaction();
+
       return {
         userPoint: {
           userId: existUser.userId,
@@ -159,17 +198,25 @@ export class UserService {
         },
       };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('유저 포인트 내역 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   // 유저 정보 찾기
   async getUser(userId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const foundUser = await this.userRepository.findOne({ where: { userId, deleteAt: IsNull() } });
       if (!foundUser) throw new NotFoundException('요청한 사용자의 정보를 찾을 수 없습니다.');
 
@@ -238,6 +285,8 @@ export class UserService {
         throw new NotFoundException('유저의 오늘 랭킹순위를 찾을 수 없습니다.');
       }
 
+      await queryRunner.commitTransaction();
+
       return {
         userInfo: {
           userId: userInfo[0].userId,
@@ -253,17 +302,25 @@ export class UserService {
         },
       };
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('유저 정보 불러오기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   // 유저 정보 수정
   async setUser(userId: number, updateUserDto: UpdateUserDto, file: Express.MulterS3.File) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -276,18 +333,28 @@ export class UserService {
         throw new UnauthorizedException('유저 본인만 수정할 수 있습니다.');
       }
       await this.userImageRepository.update({ userId: userId }, { imageUrl: file.location });
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('유저 정보 수정하기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 
   // 유저 정보 삭제
   async delUser(userId: number) {
+    const queryRunner = this.connection.createQueryRunner();
     try {
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
       const existUser = await this.userRepository.findOne({
         where: { userId, deleteAt: IsNull() },
       });
@@ -300,12 +367,18 @@ export class UserService {
         // 조건에 맞는 데이터가 없어서 업데이트가 실패한 경우
         throw new UnauthorizedException('유저 본인만 삭제할 수 있습니다.');
       }
+
+      await queryRunner.commitTransaction();
     } catch (error) {
+      await queryRunner.rollbackTransaction();
+
       if (error instanceof UnauthorizedException || error instanceof NotFoundException) {
         throw error;
       } else {
         throw new InternalServerErrorException('유저 정보 삭제하기에 실패했습니다.');
       }
+    } finally {
+      await queryRunner.release();
     }
   }
 }
